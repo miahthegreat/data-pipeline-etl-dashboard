@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Env
+.env
+.env.local
+*.local
+
+# Build / IDE
+dist/
+build/
+*.egg-info/
+.idea/
+.vscode/
+*.log
+
+# DB
+*.db
+*.sqlite
