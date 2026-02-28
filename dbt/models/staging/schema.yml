@@ -1,0 +1,13 @@
+version: 2
+sources:
+  - name: pipeline
+    description: Pipeline dashboard database (job_runs, pipelines, etc.)
+    database: pipeline_dashboard
+    schema: public
+    tables:
+      - name: job_runs
+      - name: pipelines
+
+models:
+  - name: stg_runs
+    description: Staging view of job runs for downstream metrics.

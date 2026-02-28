@@ -6,6 +6,31 @@ async function get<T>(path: string): Promise<T> {
   return r.json();
 }
 
+async function post<T>(path: string, body?: object): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? (undefined as T) : r.json();
+}
+
+async function patch<T>(path: string, body: object): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function del(path: string): Promise<void> {
+  const r = await fetch(`${BASE}${path}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(await r.text());
+}
+
 export interface DashboardSummary {
   total_pipelines: number;
   total_runs_24h: number;
@@ -45,6 +70,23 @@ export interface DataFreshnessWithStatus {
   hours_since_update: number | null;
 }
 
+export interface AlertRule {
+  id: number;
+  name: string;
+  alert_type: string;
+  webhook_url: string | null;
+  pipeline_id: number | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertCheckResult {
+  run_failed_count: number;
+  freshness_stale_count: number;
+  alerts_sent: number;
+}
+
 export const api = {
   dashboardSummary: () => get<DashboardSummary>("/dashboard/summary"),
   pipelines: () => get<Pipeline[]>("/pipelines"),
@@ -68,4 +110,11 @@ export const api = {
     const query = q.toString();
     return get<DataFreshnessWithStatus[]>(`/freshness${query ? `?${query}` : ""}`);
   },
+  alertRules: () => get<AlertRule[]>("/alerts"),
+  alertRuleCreate: (body: { name: string; alert_type: string; webhook_url?: string; pipeline_id?: number; enabled?: boolean }) =>
+    post<AlertRule>("/alerts", body),
+  alertRuleUpdate: (id: number, body: Partial<{ name: string; alert_type: string; webhook_url: string; pipeline_id: number; enabled: boolean }>) =>
+    patch<AlertRule>(`/alerts/${id}`, body),
+  alertRuleDelete: (id: number) => del(`/alerts/${id}`),
+  alertsCheck: (hours = 24) => post<AlertCheckResult>(`/alerts/check?hours=${hours}`),
 };

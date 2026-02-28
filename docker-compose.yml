@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/pipeline_dashboard
+      # Optional: default webhook for alert rules (Slack incoming webhook URL)
+      # SLACK_WEBHOOK_URL: https://hooks.slack.com/services/...
     ports:
       - "8000:8000"
     depends_on:
@@ -41,5 +43,59 @@ services:
     depends_on:
       - backend
 
+  # Optional: Apache Airflow (enable with --profile airflow)
+  airflow-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - airflow
+
+  airflow:
+    image: apache/airflow:2.10.4
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    ports:
+      - "8080:8080"
+    command: airflow standalone
+    depends_on:
+      airflow-db: { condition: service_healthy }
+    profiles:
+      - airflow
+
+  # Optional: Metabase for ad-hoc analytics (enable with --profile metabase)
+  metabase:
+    image: metabase/metabase:latest
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: pipeline_dashboard
+      MB_DB_PORT: 5432
+      MB_DB_USER: postgres
+      MB_DB_PASS: postgres
+      MB_DB_HOST: db
+    ports:
+      - "3000:3000"
+    depends_on:
+      db: { condition: service_healthy }
+    profiles:
+      - metabase
+
 volumes:
   pipeline_pgdata:
+  airflow_pgdata:

@@ -1,0 +1,4 @@
+version: 2
+models:
+  - name: run_summary
+    description: Run counts and totals by pipeline and status (7-day window).

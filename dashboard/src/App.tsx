@@ -1,13 +1,15 @@
 import { Routes, Route, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListOrdered, Database, Activity } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Database, Activity, Bell } from "lucide-react";
 import Overview from "./pages/Overview";
 import JobRuns from "./pages/JobRuns";
 import DataFreshness from "./pages/DataFreshness";
+import Alerts from "./pages/Alerts";
 
 const nav = [
   { path: "/", label: "Overview", icon: LayoutDashboard },
   { path: "/runs", label: "Job runs", icon: ListOrdered },
   { path: "/freshness", label: "Data freshness", icon: Database },
+  { path: "/alerts", label: "Alerting", icon: Bell },
 ];
 
 function Layout() {
@@ -44,6 +46,7 @@ function Layout() {
           <Route path="/" element={<Overview />} />
           <Route path="/runs" element={<JobRuns />} />
           <Route path="/freshness" element={<DataFreshness />} />
+          <Route path="/alerts" element={<Alerts />} />
         </Routes>
       </main>
     </div>

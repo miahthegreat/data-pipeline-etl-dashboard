@@ -80,3 +80,38 @@ class DashboardSummary(BaseModel):
     success_count_24h: int
     failed_count_24h: int
     stale_datasets_count: int
+
+
+class AlertRuleBase(BaseModel):
+    name: str
+    alert_type: str  # run_failed, freshness_stale
+    webhook_url: Optional[str] = None
+    pipeline_id: Optional[int] = None
+    enabled: bool = True
+
+
+class AlertRuleCreate(AlertRuleBase):
+    pass
+
+
+class AlertRuleUpdate(BaseModel):
+    name: Optional[str] = None
+    alert_type: Optional[str] = None
+    webhook_url: Optional[str] = None
+    pipeline_id: Optional[int] = None
+    enabled: Optional[bool] = None
+
+
+class AlertRule(AlertRuleBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AlertCheckResult(BaseModel):
+    run_failed_count: int
+    freshness_stale_count: int
+    alerts_sent: int

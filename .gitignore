@@ -23,3 +23,12 @@ build/
 # DB
 *.db
 *.sqlite
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+profiles.yml
+
+# Airflow (local)
+airflow/logs/

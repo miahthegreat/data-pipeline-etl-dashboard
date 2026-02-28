@@ -1,15 +1,38 @@
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import JobRun, Pipeline
-from app.schemas import JobRun as JobRunSchema
+from app.schemas import JobRun as JobRunSchema, JobRunCreate
 
 router = APIRouter()
+
+
+@router.post("", response_model=JobRunSchema, status_code=201)
+async def create_run(body: JobRunCreate, db: AsyncSession = Depends(get_db)):
+    """Record a job run (e.g. from dbt, Airflow, or a cron job)."""
+    if body.status not in ("pending", "running", "success", "failed"):
+        raise HTTPException(400, "status must be pending, running, success, or failed")
+    result = await db.execute(select(Pipeline).where(Pipeline.id == body.pipeline_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(404, "Pipeline not found")
+    run = JobRun(
+        pipeline_id=body.pipeline_id,
+        status=body.status,
+        started_at=body.started_at,
+        finished_at=body.finished_at,
+        duration_seconds=body.duration_seconds,
+        rows_affected=body.rows_affected,
+        error_message=body.error_message,
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+    return run
 
 
 @router.get("", response_model=list[JobRunSchema])
@@ -53,6 +76,5 @@ async def get_run(run_id: int, db: AsyncSession = Depends(get_db)):
     )
     run = result.scalar_one_or_none()
     if not run:
-        from fastapi import HTTPException
         raise HTTPException(404, "Run not found")
     return run

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -49,3 +49,31 @@ class DataFreshness(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     pipeline: Mapped["Pipeline"] = relationship("Pipeline", back_populates="freshness")
+
+
+class AlertRule(Base):
+    __tablename__ = "alert_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    alert_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)  # run_failed, freshness_stale
+    webhook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Slack or generic webhook
+    pipeline_id: Mapped[Optional[int]] = mapped_column(ForeignKey("pipelines.id"), nullable=True, index=True)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    deliveries: Mapped[list["AlertDelivery"]] = relationship("AlertDelivery", back_populates="alert_rule")
+
+
+class AlertDelivery(Base):
+    __tablename__ = "alert_deliveries"
+    __table_args__ = (UniqueConstraint("alert_rule_id", "incident_type", "incident_id", name="uq_alert_delivery_incident"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    alert_rule_id: Mapped[int] = mapped_column(ForeignKey("alert_rules.id"), nullable=False, index=True)
+    incident_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    incident_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    delivered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    alert_rule: Mapped["AlertRule"] = relationship("AlertRule", back_populates="deliveries")

@@ -1,0 +1,19 @@
+# Data Pipeline & ETL Dashboard — dbt project
+# Run from repo root: dbt run --project-dir dbt
+# Optionally report runs to dashboard: see dbt/README.md
+name: pipeline_dashboard
+config-version: 2
+version: 1.0.0
+profile: pipeline_dashboard
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  pipeline_dashboard:
+    staging:
+      +schema: staging
+    marts:
+      +schema: marts

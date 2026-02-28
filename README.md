@@ -15,8 +15,10 @@ Internal platform for scheduling and monitoring data pipelines. Tracks job runs,
 
 ```
 data-pipeline-etl-dashboard/
-├── backend/          # FastAPI app: APIs for jobs, runs, freshness, metrics
-├── dashboard/        # React frontend: monitoring UI and trend dashboards
+├── backend/          # FastAPI app: APIs for jobs, runs, freshness, metrics, alerts
+├── dashboard/        # React frontend: monitoring UI, job runs, freshness, alerting
+├── dbt/              # dbt project: staging and marts models
+├── airflow/         # Optional Airflow DAGs (--profile airflow)
 ├── docker-compose.yml
 └── README.md
 ```
@@ -63,14 +65,30 @@ PostgreSQL. Migrations via Alembic. Set `DATABASE_URL` in backend `.env`.
 
 ## Environment
 
-| Variable        | Description                    |
-|-----------------|--------------------------------|
-| `DATABASE_URL`  | PostgreSQL connection string   |
-| `API_BASE_URL`  | Backend URL for the dashboard  |
+| Variable             | Description                              |
+|----------------------|------------------------------------------|
+| `DATABASE_URL`       | PostgreSQL connection string             |
+| `API_BASE_URL`       | Backend URL for the dashboard             |
+| `SLACK_WEBHOOK_URL`  | Optional default webhook for alert rules  |
+
+## Optional services
+
+- **Airflow:** `docker compose --profile airflow up -d` → http://localhost:8080 (admin/admin). Add DAGs in `airflow/dags/`.
+- **Metabase:** `docker compose --profile metabase up -d` → http://localhost:3000. Connect to the same Postgres for ad-hoc analytics.
+
+## Recording runs from dbt or Airflow
+
+Create a pipeline in the dashboard (or via `POST /api/pipelines`), then record runs with `POST /api/runs`:
+
+```bash
+curl -X POST "http://localhost:8000/api/runs" \
+  -H "Content-Type: application/json" \
+  -d '{"pipeline_id": 1, "status": "success", "started_at": "2025-01-15T10:00:00Z", "finished_at": "2025-01-15T10:02:00Z", "duration_seconds": 120}'
+```
 
 ## Roadmap
 
-- [ ] Integrate Apache Airflow for job scheduling
-- [ ] Add dbt project and run tracking
-- [ ] Optional Metabase for ad-hoc analytics
-- [ ] Alerting (email/Slack) on failure or freshness SLA breach
+- [x] Alerting (Slack/webhook) on run failure and freshness SLA breach
+- [x] dbt project and run tracking (POST /api/runs)
+- [x] Optional Airflow and Metabase in Docker Compose
+- [ ] Scheduled alert check (cron or Airflow DAG calling POST /api/alerts/check)
