@@ -82,6 +82,17 @@ class DashboardSummary(BaseModel):
     stale_datasets_count: int
 
 
+class RunsTrendDay(BaseModel):
+    date: str  # YYYY-MM-DD
+    success: int
+    failed: int
+    total: int
+
+
+class RunsTrendResponse(BaseModel):
+    days: list[RunsTrendDay]
+
+
 class AlertRuleBase(BaseModel):
     name: str
     alert_type: str  # run_failed, freshness_stale

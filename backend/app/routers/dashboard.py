@@ -1,12 +1,13 @@
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select, func, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Pipeline, JobRun, DataFreshness
-from app.schemas import DashboardSummary
+from app.schemas import DashboardSummary, RunsTrendResponse, RunsTrendDay
 
 router = APIRouter()
 
@@ -47,3 +48,41 @@ async def dashboard_summary(db: AsyncSession = Depends(get_db)):
         failed_count_24h=failed_count_24h,
         stale_datasets_count=stale,
     )
+
+
+@router.get("/runs-trend", response_model=RunsTrendResponse)
+async def runs_trend(
+    days: int = Query(7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+):
+    """Daily run counts (success/failed/total) for the last N days."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    result = await db.execute(
+        select(
+            cast(JobRun.started_at, Date).label("day"),
+            JobRun.status,
+            func.count(JobRun.id).label("cnt"),
+        )
+        .where(JobRun.started_at >= since)
+        .group_by(cast(JobRun.started_at, Date), JobRun.status)
+    )
+    rows = result.all()
+    by_date: dict[str, dict[str, int]] = defaultdict(lambda: {"success": 0, "failed": 0, "total": 0})
+    for day, status, cnt in rows:
+        day_str = day.isoformat() if hasattr(day, "isoformat") else str(day)
+        by_date[day_str]["total"] += cnt
+        if status == "success":
+            by_date[day_str]["success"] += cnt
+        elif status == "failed":
+            by_date[day_str]["failed"] += cnt
+    # Fill missing days with zeros
+    out: list[RunsTrendDay] = []
+    for i in range(days):
+        d = (datetime.now(timezone.utc) - timedelta(days=i)).date()
+        day_str = d.isoformat()
+        data = by_date.get(day_str, {"success": 0, "failed": 0, "total": 0})
+        out.append(
+            RunsTrendDay(date=day_str, success=data["success"], failed=data["failed"], total=data["total"])
+        )
+    out.reverse()
+    return RunsTrendResponse(days=out)

@@ -91,4 +91,4 @@ curl -X POST "http://localhost:8000/api/runs" \
 - [x] Alerting (Slack/webhook) on run failure and freshness SLA breach
 - [x] dbt project and run tracking (POST /api/runs)
 - [x] Optional Airflow and Metabase in Docker Compose
-- [ ] Scheduled alert check (cron or Airflow DAG calling POST /api/alerts/check)
+- [x] Scheduled alert check (APScheduler; set `ALERT_CHECK_INTERVAL_MINUTES`, default 15)

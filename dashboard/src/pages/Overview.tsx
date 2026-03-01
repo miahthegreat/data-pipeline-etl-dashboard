@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type DashboardSummary } from "../api";
+import { api, type DashboardSummary, type Pipeline, type RunsTrendResponse } from "../api";
 import { Database, CheckCircle, XCircle, AlertTriangle, ArrowRight } from "lucide-react";
 
 export default function Overview() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [trend, setTrend] = useState<RunsTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .dashboardSummary()
-      .then(setSummary)
+    Promise.all([api.dashboardSummary(), api.pipelines(), api.runsTrend(7)])
+      .then(([s, p, t]) => {
+        setSummary(s);
+        setPipelines(p);
+        setTrend(t);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -27,6 +32,14 @@ export default function Overview() {
     { label: "Failed (24h)", value: summary.failed_count_24h, icon: XCircle, color: "text-[var(--error)]" },
     { label: "Stale datasets", value: summary.stale_datasets_count, icon: AlertTriangle, color: "text-[var(--warning)]" },
   ];
+
+  const chartData = trend?.days.map((d) => ({
+    date: d.date.slice(5),
+    success: d.success,
+    failed: d.failed,
+    total: Math.max(d.total, 1),
+  })) ?? [];
+  const maxTotal = chartData.length ? Math.max(...chartData.map((d) => d.total)) : 1;
 
   return (
     <div className="space-y-8">
@@ -45,6 +58,72 @@ export default function Overview() {
           </div>
         ))}
       </div>
+
+      {chartData.length > 0 && (
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+          <h2 className="text-lg font-medium mb-4">Runs trend (last 7 days)</h2>
+          <div className="flex items-end gap-1 h-48">
+            {chartData.map((d) => (
+              <div key={d.date} className="flex-1 flex flex-col gap-0.5 justify-end min-w-0">
+                <div
+                  className="w-full rounded-t flex flex-col-reverse"
+                  style={{ height: "100%" }}
+                >
+                  {d.failed > 0 && (
+                    <div
+                      className="w-full rounded-t min-h-[2px]"
+                      style={{
+                        height: `${(d.failed / maxTotal) * 100}%`,
+                        backgroundColor: "var(--error)",
+                      }}
+                      title={`${d.date}: ${d.failed} failed`}
+                    />
+                  )}
+                  {d.success > 0 && (
+                    <div
+                      className="w-full min-h-[2px]"
+                      style={{
+                        height: `${(d.success / maxTotal) * 100}%`,
+                        backgroundColor: "var(--success)",
+                      }}
+                      title={`${d.date}: ${d.success} success`}
+                    />
+                  )}
+                </div>
+                <span className="text-xs text-[var(--muted)] truncate text-center mt-1">{d.date}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-4 mt-2 text-sm text-[var(--muted)]">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-[var(--success)]" /> Success
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-[var(--error)]" /> Failed
+            </span>
+          </div>
+        </div>
+      )}
+
+      {pipelines.length > 0 && (
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+          <h2 className="text-lg font-medium mb-3">Pipelines</h2>
+          <ul className="space-y-2">
+            {pipelines.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/pipelines/${p.id}`}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/5 text-[var(--foreground)]"
+                >
+                  <span className="font-medium">{p.name}</span>
+                  <ArrowRight className="h-4 w-4 text-[var(--muted)]" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex gap-4">
         <Link
           to="/runs"

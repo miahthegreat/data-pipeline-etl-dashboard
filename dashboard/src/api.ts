@@ -1,9 +1,26 @@
-const BASE = "/api";
+// Call the backend directly on port 8000 (same host as the page). Avoids relying on Vite proxy.
+const BASE =
+  typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+    : "/api";
+
+function handleError(r: Response, body: string): never {
+  try {
+    const j = JSON.parse(body) as { detail?: string; type?: string };
+    const msg = typeof j.detail === "string" ? j.detail : body;
+    throw new Error(msg);
+  } catch (e) {
+    if (e instanceof SyntaxError) throw new Error(body || r.statusText);
+    if (e instanceof Error) throw e;
+    throw new Error(body || r.statusText);
+  }
+}
 
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${BASE}${path}`);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const text = await r.text();
+  if (!r.ok) handleError(r, text);
+  return JSON.parse(text) as T;
 }
 
 async function post<T>(path: string, body?: object): Promise<T> {
@@ -12,8 +29,9 @@ async function post<T>(path: string, body?: object): Promise<T> {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.status === 204 ? (undefined as T) : r.json();
+  const text = await r.text();
+  if (!r.ok) handleError(r, text);
+  return r.status === 204 ? (undefined as T) : (JSON.parse(text) as T);
 }
 
 async function patch<T>(path: string, body: object): Promise<T> {
@@ -22,13 +40,15 @@ async function patch<T>(path: string, body: object): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const text = await r.text();
+  if (!r.ok) handleError(r, text);
+  return JSON.parse(text) as T;
 }
 
 async function del(path: string): Promise<void> {
   const r = await fetch(`${BASE}${path}`, { method: "DELETE" });
-  if (!r.ok) throw new Error(await r.text());
+  const text = await r.text();
+  if (!r.ok) handleError(r, text);
 }
 
 export interface DashboardSummary {
@@ -87,9 +107,22 @@ export interface AlertCheckResult {
   alerts_sent: number;
 }
 
+export interface RunsTrendDay {
+  date: string;
+  success: number;
+  failed: number;
+  total: number;
+}
+
+export interface RunsTrendResponse {
+  days: RunsTrendDay[];
+}
+
 export const api = {
   dashboardSummary: () => get<DashboardSummary>("/dashboard/summary"),
+  runsTrend: (days = 7) => get<RunsTrendResponse>(`/dashboard/runs-trend?days=${days}`),
   pipelines: () => get<Pipeline[]>("/pipelines"),
+  pipeline: (id: number) => get<Pipeline>(`/pipelines/${id}`),
   runs: (params?: { pipeline_id?: number; status?: string; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.pipeline_id != null) q.set("pipeline_id", String(params.pipeline_id));

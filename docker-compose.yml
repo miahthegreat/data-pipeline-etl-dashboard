@@ -36,10 +36,12 @@ services:
       - "5173:5173"
     environment:
       VITE_API_BASE_URL: http://localhost:8000
+      # Proxy /api to backend when running in Docker (use backend service name)
+      VITE_PROXY_TARGET: http://backend:8000
     volumes:
       - ./dashboard:/app
-      - /app/node_modules
-    command: npm run dev
+      - dashboard_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
     depends_on:
       - backend
 
@@ -99,3 +101,4 @@ services:
 volumes:
   pipeline_pgdata:
   airflow_pgdata:
+  dashboard_node_modules:

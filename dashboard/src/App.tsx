@@ -4,6 +4,7 @@ import Overview from "./pages/Overview";
 import JobRuns from "./pages/JobRuns";
 import DataFreshness from "./pages/DataFreshness";
 import Alerts from "./pages/Alerts";
+import PipelineDetail from "./pages/PipelineDetail";
 
 const nav = [
   { path: "/", label: "Overview", icon: LayoutDashboard },
@@ -44,6 +45,7 @@ function Layout() {
       <main className="flex-1 overflow-auto p-6">
         <Routes>
           <Route path="/" element={<Overview />} />
+          <Route path="/pipelines/:id" element={<PipelineDetail />} />
           <Route path="/runs" element={<JobRuns />} />
           <Route path="/freshness" element={<DataFreshness />} />
           <Route path="/alerts" element={<Alerts />} />
