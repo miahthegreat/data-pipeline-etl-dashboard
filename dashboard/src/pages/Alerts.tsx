@@ -19,14 +19,14 @@ export default function Alerts() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.alertRules(), api.pipelines(), api.alertDeliveries(50)])
-      .then(([r, p, d]) => {
+    Promise.all([api.alertRules(), api.pipelines()])
+      .then(([r, p]) => {
         setRules(r);
         setPipelines(p);
-        setDeliveries(d);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+    api.alertDeliveries(50).then(setDeliveries).catch(() => setDeliveries([]));
   };
 
   useEffect(() => {

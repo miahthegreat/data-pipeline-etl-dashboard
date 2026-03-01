@@ -90,7 +90,7 @@ async def runs_trend(
 
 @router.get("/metrics", response_model=DashboardMetrics)
 async def dashboard_metrics(
-    days: int = 7,
+    days: int = Query(7, ge=1, le=90),
     db: AsyncSession = Depends(get_db),
 ):
     """Success rate (last N days) and slowest pipelines by avg duration."""

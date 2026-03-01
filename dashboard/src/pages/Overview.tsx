@@ -12,15 +12,15 @@ export default function Overview() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api.dashboardSummary(), api.pipelines(), api.runsTrend(7), api.dashboardMetrics(7)])
-      .then(([s, p, t, m]) => {
+    Promise.all([api.dashboardSummary(), api.pipelines(), api.runsTrend(7)])
+      .then(([s, p, t]) => {
         setSummary(s);
         setPipelines(p);
         setTrend(t);
-        setMetrics(m);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+    api.dashboardMetrics(7).then(setMetrics).catch(() => setMetrics(null));
   }, []);
 
   if (loading) return <div className="text-[var(--muted)]">Loading…</div>;

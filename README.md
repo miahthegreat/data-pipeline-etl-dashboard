@@ -23,19 +23,31 @@ data-pipeline-etl-dashboard/
 └── README.md
 ```
 
-## Quick start
+## Quick start (full stack)
 
 ```bash
-# Run everything with Docker
+# From repo root: start DB, backend, and dashboard
 docker compose up -d
 
-# Seed sample data (optional, once)
+# Wait for backend to be ready, then optionally seed sample data (once)
 docker compose exec backend python -m app.seed
 
 # Backend API: http://localhost:8000
 # API docs: http://localhost:8000/docs
 # Dashboard UI: http://localhost:5173
 ```
+
+The dashboard (React dev server on 5173) talks to the backend on port 8000; CORS is set for `localhost:5173`. To run only the database and backend, use `docker compose up -d db backend`.
+
+## CI
+
+GitHub Actions runs on push/PR to `main`/`master`:
+
+- **backend:** PostgreSQL 16 service + `pytest tests/`
+- **frontend:** `npm ci` + `npm run test`
+- **build:** `docker compose build` for db, backend, and dashboard
+
+Workflow: [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Development
 

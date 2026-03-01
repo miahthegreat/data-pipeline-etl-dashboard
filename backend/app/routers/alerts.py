@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,7 +35,7 @@ async def create_alert_rule(body: AlertRuleCreate, db: AsyncSession = Depends(ge
 
 @router.get("/deliveries", response_model=list[AlertDeliveryResponse])
 async def list_alert_deliveries(
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
