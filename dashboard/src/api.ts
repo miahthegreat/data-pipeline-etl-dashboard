@@ -118,6 +118,19 @@ export interface RunsTrendResponse {
   days: RunsTrendDay[];
 }
 
+export interface AlertDelivery {
+  id: number;
+  alert_rule_id: number;
+  incident_type: string;
+  incident_id: string;
+  delivered_at: string;
+}
+
+export interface DashboardMetrics {
+  success_rate_7d: number;
+  slowest_pipelines: { pipeline_id: number; name: string; avg_duration_seconds: number | null; run_count: number }[];
+}
+
 export const api = {
   dashboardSummary: () => get<DashboardSummary>("/dashboard/summary"),
   runsTrend: (days = 7) => get<RunsTrendResponse>(`/dashboard/runs-trend?days=${days}`),
@@ -143,6 +156,21 @@ export const api = {
     const query = q.toString();
     return get<DataFreshnessWithStatus[]>(`/freshness${query ? `?${query}` : ""}`);
   },
+  freshnessCreate: (body: { pipeline_id: number; dataset_name: string; expected_interval_hours?: number }) =>
+    post<DataFreshnessWithStatus>("/freshness", body),
+  freshnessRefresh: (id: number) => post<DataFreshnessWithStatus>(`/freshness/${id}/refresh`),
+  freshnessDelete: (id: number) => del(`/freshness/${id}`),
+  runCreate: (body: {
+    pipeline_id: number;
+    status: string;
+    started_at: string;
+    finished_at?: string;
+    duration_seconds?: number;
+    rows_affected?: number;
+    error_message?: string;
+  }) => post<JobRun>("/runs", body),
+  alertDeliveries: (limit = 50) => get<AlertDelivery[]>(`/alerts/deliveries?limit=${limit}`),
+  dashboardMetrics: (days = 7) => get<DashboardMetrics>(`/dashboard/metrics?days=${days}`),
   alertRules: () => get<AlertRule[]>("/alerts"),
   alertRuleCreate: (body: { name: string; alert_type: string; webhook_url?: string; pipeline_id?: number; enabled?: boolean }) =>
     post<AlertRule>("/alerts", body),

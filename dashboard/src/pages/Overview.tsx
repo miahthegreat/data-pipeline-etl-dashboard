@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type DashboardSummary, type Pipeline, type RunsTrendResponse } from "../api";
-import { Database, CheckCircle, XCircle, AlertTriangle, ArrowRight } from "lucide-react";
+import { api, type DashboardSummary, type Pipeline, type RunsTrendResponse, type DashboardMetrics } from "../api";
+import { Database, CheckCircle, XCircle, AlertTriangle, ArrowRight, TrendingUp, Clock } from "lucide-react";
 
 export default function Overview() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [trend, setTrend] = useState<RunsTrendResponse | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api.dashboardSummary(), api.pipelines(), api.runsTrend(7)])
-      .then(([s, p, t]) => {
+    Promise.all([api.dashboardSummary(), api.pipelines(), api.runsTrend(7), api.dashboardMetrics(7)])
+      .then(([s, p, t, m]) => {
         setSummary(s);
         setPipelines(p);
         setTrend(t);
+        setMetrics(m);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -58,6 +60,38 @@ export default function Overview() {
           </div>
         ))}
       </div>
+
+      {metrics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-lg font-medium mb-2 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-[var(--success)]" />
+              Success rate (7d)
+            </h2>
+            <p className="text-2xl font-semibold">{metrics.success_rate_7d}%</p>
+          </div>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+            <h2 className="text-lg font-medium mb-2 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-[var(--muted)]" />
+              Slowest pipelines (7d avg)
+            </h2>
+            <ul className="space-y-1 text-sm">
+              {metrics.slowest_pipelines.length === 0 ? (
+                <li className="text-[var(--muted)]">No run duration data yet.</li>
+              ) : (
+                metrics.slowest_pipelines.slice(0, 5).map((s) => (
+                  <li key={s.pipeline_id} className="flex justify-between">
+                    <span className="truncate">{s.name}</span>
+                    <span className="font-mono text-[var(--muted)] ml-2">
+                      {s.avg_duration_seconds != null ? `${Math.round(s.avg_duration_seconds)}s` : "—"} ({s.run_count} runs)
+                    </span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {chartData.length > 0 && (
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">

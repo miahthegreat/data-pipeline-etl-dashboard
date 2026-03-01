@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type AlertRule, type Pipeline, type AlertCheckResult } from "../api";
+import { api, type AlertRule, type Pipeline, type AlertCheckResult, type AlertDelivery } from "../api";
 import { Bell, Plus, Trash2, Play, Loader2 } from "lucide-react";
 
 export default function Alerts() {
@@ -9,6 +9,7 @@ export default function Alerts() {
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<AlertCheckResult | null>(null);
+  const [deliveries, setDeliveries] = useState<AlertDelivery[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<"run_failed" | "freshness_stale">("run_failed");
@@ -18,10 +19,11 @@ export default function Alerts() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.alertRules(), api.pipelines()])
-      .then(([r, p]) => {
+    Promise.all([api.alertRules(), api.pipelines(), api.alertDeliveries(50)])
+      .then(([r, p, d]) => {
         setRules(r);
         setPipelines(p);
+        setDeliveries(d);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -105,6 +107,34 @@ export default function Alerts() {
           <p>Failed runs (24h): {checkResult.run_failed_count}</p>
           <p>Stale datasets: {checkResult.freshness_stale_count}</p>
           <p className="text-[var(--accent)]">Alerts sent: {checkResult.alerts_sent}</p>
+        </div>
+      )}
+
+      {deliveries.length > 0 && (
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
+          <h2 className="p-4 border-b border-[var(--border)] font-medium">Recent deliveries</h2>
+          <div className="max-h-48 overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[var(--surface)] border-b border-[var(--border)]">
+                  <th className="text-left p-3 font-medium">Rule ID</th>
+                  <th className="text-left p-3 font-medium">Type</th>
+                  <th className="text-left p-3 font-medium">Incident</th>
+                  <th className="text-left p-3 font-medium">Delivered at</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deliveries.map((d) => (
+                  <tr key={d.id} className="border-b border-[var(--border)] last:border-0 hover:bg-white/5">
+                    <td className="p-3 font-mono">{d.alert_rule_id}</td>
+                    <td className="p-3">{d.incident_type}</td>
+                    <td className="p-3 font-mono text-[var(--muted)]">{d.incident_id}</td>
+                    <td className="p-3 text-[var(--muted)]">{new Date(d.delivered_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

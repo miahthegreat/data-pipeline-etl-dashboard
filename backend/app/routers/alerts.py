@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import AlertRule, AlertDelivery
-from app.schemas import AlertRuleCreate, AlertRuleUpdate, AlertRule as AlertRuleSchema, AlertCheckResult
+from app.schemas import AlertRuleCreate, AlertRuleUpdate, AlertRule as AlertRuleSchema, AlertCheckResult, AlertDeliveryResponse
 from app.services.alert_check import run_alert_check
 
 router = APIRouter()
@@ -31,6 +31,17 @@ async def create_alert_rule(body: AlertRuleCreate, db: AsyncSession = Depends(ge
     await db.commit()
     await db.refresh(rule)
     return rule
+
+
+@router.get("/deliveries", response_model=list[AlertDeliveryResponse])
+async def list_alert_deliveries(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(AlertDelivery).order_by(AlertDelivery.delivered_at.desc()).limit(limit)
+    )
+    return list(result.scalars().all())
 
 
 @router.get("/{rule_id}", response_model=AlertRuleSchema)

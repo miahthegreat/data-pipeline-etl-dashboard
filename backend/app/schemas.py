@@ -56,8 +56,11 @@ class DataFreshnessBase(BaseModel):
     expected_interval_hours: Optional[float] = None
 
 
-class DataFreshnessCreate(DataFreshnessBase):
-    pass
+class DataFreshnessCreate(BaseModel):
+    pipeline_id: int
+    dataset_name: str
+    last_updated_at: Optional[datetime] = None  # default now in router
+    expected_interval_hours: Optional[float] = None
 
 
 class DataFreshness(DataFreshnessBase):
@@ -67,6 +70,12 @@ class DataFreshness(DataFreshnessBase):
 
     class Config:
         from_attributes = True
+
+
+class DataFreshnessUpdate(BaseModel):
+    dataset_name: Optional[str] = None
+    last_updated_at: Optional[datetime] = None
+    expected_interval_hours: Optional[float] = None
 
 
 class DataFreshnessWithStatus(DataFreshness):
@@ -126,3 +135,19 @@ class AlertCheckResult(BaseModel):
     run_failed_count: int
     freshness_stale_count: int
     alerts_sent: int
+
+
+class AlertDeliveryResponse(BaseModel):
+    id: int
+    alert_rule_id: int
+    incident_type: str
+    incident_id: str
+    delivered_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DashboardMetrics(BaseModel):
+    success_rate_7d: float  # 0-100
+    slowest_pipelines: list[dict]  # [{ pipeline_id, name, avg_duration_seconds, run_count }]

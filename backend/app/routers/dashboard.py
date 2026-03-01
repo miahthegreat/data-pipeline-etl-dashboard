@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Pipeline, JobRun, DataFreshness
-from app.schemas import DashboardSummary, RunsTrendResponse, RunsTrendDay
+from app.schemas import DashboardSummary, RunsTrendResponse, RunsTrendDay, DashboardMetrics
 
 router = APIRouter()
 
@@ -86,3 +86,50 @@ async def runs_trend(
         )
     out.reverse()
     return RunsTrendResponse(days=out)
+
+
+@router.get("/metrics", response_model=DashboardMetrics)
+async def dashboard_metrics(
+    days: int = 7,
+    db: AsyncSession = Depends(get_db),
+):
+    """Success rate (last N days) and slowest pipelines by avg duration."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    # Success rate
+    runs_result = await db.execute(
+        select(JobRun.status, func.count(JobRun.id))
+        .where(JobRun.started_at >= since)
+        .group_by(JobRun.status)
+    )
+    rows = runs_result.all()
+    total = sum(c for _, c in rows)
+    success = next((c for s, c in rows if s == "success"), 0)
+    success_rate_7d = (success / total * 100.0) if total else 0.0
+
+    # Slowest pipelines: avg duration by pipeline (last N days)
+    subq = (
+        select(
+            JobRun.pipeline_id,
+            func.avg(JobRun.duration_seconds).label("avg_dur"),
+            func.count(JobRun.id).label("run_count"),
+        )
+        .where(JobRun.started_at >= since, JobRun.duration_seconds.isnot(None))
+        .group_by(JobRun.pipeline_id)
+    )
+    subq = subq.subquery()
+    pipelines_result = await db.execute(
+        select(Pipeline.id, Pipeline.name, subq.c.avg_dur, subq.c.run_count)
+        .join(subq, Pipeline.id == subq.c.pipeline_id)
+        .order_by(subq.c.avg_dur.desc().nulls_last())
+        .limit(10)
+    )
+    slowest = []
+    for pid, name, avg_dur, run_count in pipelines_result.all():
+        slowest.append({
+            "pipeline_id": pid,
+            "name": name,
+            "avg_duration_seconds": round(avg_dur, 2) if avg_dur else None,
+            "run_count": run_count,
+        })
+
+    return DashboardMetrics(success_rate_7d=round(success_rate_7d, 1), slowest_pipelines=slowest)

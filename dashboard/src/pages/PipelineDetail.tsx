@@ -13,6 +13,11 @@ export default function PipelineDetail() {
 
   const pipelineId = id ? parseInt(id, 10) : NaN;
 
+  const loadRuns = () => {
+    if (isNaN(pipelineId)) return;
+    api.runs({ pipeline_id: pipelineId, limit: 50 }).then(setRuns).catch(() => {});
+  };
+
   useEffect(() => {
     if (!id || isNaN(pipelineId)) {
       setError("Invalid pipeline");
@@ -48,7 +53,7 @@ export default function PipelineDetail() {
         <ArrowLeft className="h-4 w-4" />
         Back to overview
       </Link>
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">{pipeline.name}</h1>
           {pipeline.description && (
@@ -58,6 +63,7 @@ export default function PipelineDetail() {
             <p className="text-sm font-mono text-[var(--muted)] mt-1">Schedule: {pipeline.schedule_cron}</p>
           )}
         </div>
+        <RecordRunForm pipelineId={pipelineId} onRecorded={() => loadRuns()} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -155,5 +161,67 @@ export default function PipelineDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+function RecordRunForm({ pipelineId, onRecorded }: { pipelineId: number; onRecorded: () => void }) {
+  const [status, setStatus] = useState<"success" | "failed">("success");
+  const [duration, setDuration] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const now = new Date().toISOString();
+    api
+      .runCreate({
+        pipeline_id: pipelineId,
+        status,
+        started_at: now,
+        finished_at: now,
+        duration_seconds: duration ? parseFloat(duration) : undefined,
+        error_message: status === "failed" ? errorMsg || "Manual record" : undefined,
+      })
+      .then(() => {
+        setDuration("");
+        setErrorMsg("");
+        onRecorded();
+      })
+      .catch(() => {})
+      .finally(() => setSubmitting(false));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl">
+      <span className="text-sm font-medium">Record run:</span>
+      <select
+        value={status}
+        onChange={(e) => setStatus(e.target.value as "success" | "failed")}
+        className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-sm"
+      >
+        <option value="success">Success</option>
+        <option value="failed">Failed</option>
+      </select>
+      <input
+        type="number"
+        placeholder="Duration (sec)"
+        value={duration}
+        onChange={(e) => setDuration(e.target.value)}
+        className="w-24 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-sm"
+      />
+      {status === "failed" && (
+        <input
+          type="text"
+          placeholder="Error message"
+          value={errorMsg}
+          onChange={(e) => setErrorMsg(e.target.value)}
+          className="min-w-[120px] bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-sm"
+        />
+      )}
+      <button type="submit" disabled={submitting} className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium disabled:opacity-50">
+        {submitting ? "…" : "Record"}
+      </button>
+    </form>
   );
 }
