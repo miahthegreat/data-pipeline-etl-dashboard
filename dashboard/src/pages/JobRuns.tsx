@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, type JobRun, type Pipeline } from "../api";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
@@ -90,7 +91,14 @@ export default function JobRuns() {
             <tbody>
               {runs.map((run) => (
                 <tr key={run.id} className="border-b border-[var(--border)] last:border-0 hover:bg-white/5">
-                  <td className="p-3">{pipelineName(run.pipeline_id)}</td>
+                  <td className="p-3">
+                    <Link
+                      to={`/pipelines/${run.pipeline_id}`}
+                      className="text-[var(--accent)] hover:underline"
+                    >
+                      {pipelineName(run.pipeline_id)}
+                    </Link>
+                  </td>
                   <td className="p-3">
                     <span className={`inline-flex items-center gap-1 ${
                       run.status === "success" ? "text-[var(--success)]" :
