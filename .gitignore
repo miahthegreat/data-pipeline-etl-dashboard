@@ -32,3 +32,6 @@ profiles.yml
 
 # Airflow (local)
 airflow/logs/
+
+# Workspace
+*.code-workspace
